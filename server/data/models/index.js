@@ -8,9 +8,10 @@ export const sequelize = new Sequelize({
   password: process.env.REACT_APP_DB_PASSWORD,
   host: process.env.REACT_APP_DB_HOST,
   operatorsAliases: false,
+  logging: false,
 });
 
-export const User = user(sequelize, Sequelize.DataTypes);
+export const User = user(sequelize, Sequelize);
 
 export default {
   User,

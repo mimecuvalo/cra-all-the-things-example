@@ -1,24 +1,24 @@
 import { ApolloProvider, getDataFromTree } from 'react-apollo';
 import { ApolloClient } from 'apollo-client';
+import { ApolloLink } from 'apollo-link';
 import App from '../../client/app/App';
 import { exec } from 'child_process';
 import { DEFAULT_LOCALE, getLocale } from './locale';
+import fetch from 'node-fetch';
 import HTMLBase from './HTMLBase';
+import { HttpLink } from 'apollo-link-http';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import { IntlProvider } from 'react-intl';
 import * as languages from '../../shared/i18n/languages';
-import { makeExecutableSchema } from 'graphql-tools';
+import { onError } from 'apollo-link-error';
 import React from 'react';
 import { renderToNodeStream } from 'react-dom/server';
-import resolvers from '../data/graphql/resolvers';
-import { SchemaLink } from 'apollo-link-schema';
 import { StaticRouter } from 'react-router';
-import typeDefs from '../data/graphql/schema';
 import util from 'util';
 import uuid from 'uuid';
 
-export default async function render({ req, res, assetPathsByType, appName, publicUrl, urls }) {
-  const apolloClient = await createApolloClient();
+export default async function render({ req, res, next, assetPathsByType, appName, publicUrl, urls }) {
+  const apolloClient = await createApolloClient(req);
   const context = {};
   const nonce = createNonceAndSetCSP(res);
 
@@ -59,11 +59,20 @@ export default async function render({ req, res, assetPathsByType, appName, publ
   );
 
   // This is so we can do `apolloClient.extract()` later on.
-  await getDataFromTree(completeApp);
+  try {
+    await getDataFromTree(completeApp);
+  } catch (ex) {
+    next(ex);
+    return;
+  }
 
   res.write('<!doctype html>');
   const stream = renderToNodeStream(completeApp);
-  stream.pipe(res);
+  stream
+    .on('error', function(err) {
+      next(err);
+    })
+    .pipe(res);
 
   if (context.url) {
     res.redirect(301, context.url);
@@ -72,12 +81,35 @@ export default async function render({ req, res, assetPathsByType, appName, publ
 }
 
 // We create an Apollo client here on the server so that we can get server-side rendering in properly.
-async function createApolloClient() {
-  const schema = makeExecutableSchema({ typeDefs, resolvers });
+async function createApolloClient(req) {
+  const errorLink = onError(({ graphQLErrors, networkError }) => {
+    if (graphQLErrors) {
+      graphQLErrors.map(({ message, locations, path }) =>
+        console.log(`\n[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}\n`)
+      );
+    }
+    if (networkError) {
+      console.log(`\n[Network error]: ${networkError}\n`);
+    }
+  });
+
+  const cookieLink = new ApolloLink((operation, forward) => {
+    operation.setContext({
+      headers: {
+        cookie: req.get('cookie'),
+      },
+    });
+    return forward(operation);
+  });
+
+  const hostWithPort = req.get('host');
+  const httpLink = new HttpLink({ uri: `${req.protocol}://${hostWithPort}/graphql`, fetch });
+
+  const link = ApolloLink.from([errorLink, cookieLink, httpLink]);
 
   const client = new ApolloClient({
     ssrMode: true,
-    link: new SchemaLink({ schema }),
+    link,
     cache: new InMemoryCache(),
   });
 
