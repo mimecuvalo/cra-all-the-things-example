@@ -28,10 +28,12 @@ export default function constructApps({ appName, urls }) {
   // NOTE! We use a file storage mechanism which keeps things simple for purposes of ubiquity of this CRA package.
   // However, I recommend using `connect-redis` for a better session store.
   const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days.
+  const sessionsSecret =
+    process.env.REACT_APP_SESSION_SECRET || (process.env.NODE_ENV === 'development' ? 'dumbsecret' : null);
   app.use(
     session({
       store: new FileStore({ ttl: SESSION_MAX_AGE, logFn: () => {} }),
-      secret: process.env.REACT_APP_SESSION_SECRET,
+      secret: sessionsSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -55,10 +57,6 @@ export default function constructApps({ appName, urls }) {
   // Set up API server.
   apiServer && app.use('/api', csrfMiddleware, apiServer({ appName, urls }));
 
-  // XXX(mime): Not ideal. The GraphQL playground needs the csrf token to work so it's disabled in dev mode :-/
-  if (process.env.NODE_ENV === 'production') {
-    app.use('/graphql', csrfMiddleware, (req, res, next) => next());
-  }
   // Set up Apollo server.
   apolloServer && apolloServer(app);
 
@@ -97,8 +95,8 @@ function logRequest(appLogger, req, connection) {
     method: req.method,
     url: req.url,
     headers: req.headers,
-    remoteAddress: connection && connection.remoteAddress,
-    remotePort: connection && connection.remotePort,
+    remoteAddress: connection?.remoteAddress,
+    remotePort: connection?.remotePort,
   });
 }
 
