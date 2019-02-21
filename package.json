@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "cra-all-the-things": "0.5.2",
-    "react": "^16.7.0",
-    "react-dom": "^16.7.0"
+    "cra-all-the-things": "0.6.4",
+    "react": "^16.8.3",
+    "react-dom": "^16.8.3"
   },
   "scripts": {
     "start": "npm-run-all --parallel serve:dev styleguide",
@@ -21,10 +21,10 @@
     "styleguide": "start-storybook -p 9001 -c .storybook --ci --quiet"
   },
   "devDependencies": {
-    "@storybook/addon-actions": "4.0.7",
-    "@storybook/addon-links": "4.0.7",
-    "@storybook/addons": "4.0.7",
-    "@storybook/react": "4.0.7",
+    "@storybook/addon-actions": "5.0.0-beta.1",
+    "@storybook/addon-links": "5.0.0-beta.1",
+    "@storybook/addons": "5.0.0-beta.1",
+    "@storybook/react": "5.0.0-beta.1",
     "axe-core": "3.1.2",
     "enzyme": "3.8.0",
     "enzyme-adapter-react-16": "1.7.1",
