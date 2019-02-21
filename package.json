@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "cra-all-the-things": "0.6.5",
+    "cra-all-the-things": "0.8.2",
     "react": "^16.8.3",
     "react-dom": "^16.8.3"
   },
