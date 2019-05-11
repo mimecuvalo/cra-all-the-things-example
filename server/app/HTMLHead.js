@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function HTMLHead({ nonce, assetPathsByType, title, urls, publicUrl }) {
+export default function HTMLHead({ assetPathsByType, nonce, publicUrl, req, title }) {
   return (
     <head>
       <meta charSet="utf-8" />
@@ -12,10 +12,10 @@ export default function HTMLHead({ nonce, assetPathsByType, title, urls, publicU
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
       <link rel="search" href="/api/opensearch" type="application/opensearchdescription+xml" title={title} />
-      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="theme-color" content="#000000" />
       <meta name="generator" content="cra-all-the-things. https://github.com/mimecuvalo/all-the-things" />
-      <OpenGraphMetadata title={title} urls={urls} />
+      <OpenGraphMetadata title={title} req={req} />
       {/*
         manifest.json provides metadata used when your web app is added to the
         homescreen on Android. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -31,21 +31,31 @@ export default function HTMLHead({ nonce, assetPathsByType, title, urls, publicU
         Learn how to configure a non-root public URL by running `npm run build`.
       */}
       <title>{title}</title>
+      {/*
+        XXX(mime): Material UI's server-side rendering for CSS doesn't allow for inserting CSS the same way we do
+        Apollo's data (see apolloStateFn in HTMLBase). So for now, we just do a string replace, sigh.
+        See related hacky code in server/app/app.js
+      */}
+      <style id="jss-ssr" dangerouslySetInnerHTML={{ __html: `<!--MATERIAL-UI-CSS-SSR-REPLACE-->` }} />
     </head>
   );
 }
 
 // This needs to be filled out by the developer to provide content for the site.
 // Learn more here: http://ogp.me/
-function OpenGraphMetadata({ title, urls }) {
+function OpenGraphMetadata({ title, req }) {
+  // TODO(mime): combine with url_factory code.
+  const protocol = req.get('x-scheme') || req.protocol;
+  const url = `${protocol}://${req.get('host')}`;
+
   return (
     <>
       <meta property="og:title" content="page title" />
       <meta property="og:description" content="page description" />
       <meta property="og:type" content="website" />
-      <meta property="og:url" content={urls.localUrlForBrowser} />
+      <meta property="og:url" content={url} />
       <meta property="og:site_name" content={title} />
-      <meta property="og:image" content={`${urls.localUrlForBrowser}favicon.ico`} />
+      <meta property="og:image" content={`${url}favicon.ico`} />
     </>
   );
 }
