@@ -24,8 +24,10 @@ Write your stunning description here.
 ## 💾 Install
 
 ```sh
-npx create-react-app react-all-the-things --use-npm --scripts-version=cra-all-the-things
+npm install
 ```
+
+_Prerequisites: Node 13+ if you want proper internationalization (i18n) support (via full-icu)._
 
 Then, to run your newly created server locally, **with** the Storybook styleguide server:
 
@@ -49,6 +51,7 @@ To run in production (or better yet check out bin/flightplan.js)
 
 ```sh
 npm --production install
+npm run build
 npm run serve:prod
 ```
 
@@ -56,6 +59,13 @@ To run tests:
 
 ```sh
 npm run test
+```
+
+To change port, in an `.env` change the values to what you desire:
+
+```sh
+PORT=3000
+REACT_APP_SSR_PORT=3001
 ```
 
 ## 📙 Learn More
