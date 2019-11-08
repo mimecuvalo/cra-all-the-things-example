@@ -1,10 +1,8 @@
 //import { F } from '../../shared/i18n';
 import Help from './Help';
-import React, {
-  PureComponent,
-  //Suspense,
-  //lazy
-} from 'react';
+import React from //Suspense,
+//lazy
+'react';
 import styles from './Footer.module.css';
 
 let Debug = () => null;
@@ -12,8 +10,8 @@ if (process.env.NODE_ENV === 'development') {
   Debug = require('../internal/Debug').default;
 }
 
-export default class Footer extends PureComponent {
-  renderDebugMenu() {
+export default function Footer() {
+  function renderDebugMenu() {
     // Conditionally compile this code. Should not appear in production.
     if (process.env.NODE_ENV === 'development') {
       // TODO(mime): Suspense and lazy aren't supported by ReactDOMServer yet (breaks SSR).
@@ -45,12 +43,10 @@ export default class Footer extends PureComponent {
     return null;
   }
 
-  render() {
-    return (
-      <footer className={styles.footer}>
-        {this.renderDebugMenu()}
-        <Help />
-      </footer>
-    );
-  }
+  return (
+    <footer className={styles.footer}>
+      {renderDebugMenu()}
+      <Help />
+    </footer>
+  );
 }
