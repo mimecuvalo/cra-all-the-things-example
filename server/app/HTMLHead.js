@@ -1,11 +1,13 @@
 import React from 'react';
 
+// NOTE: Keep in sync with index.html for service workers!
 export default function HTMLHead({ assetPathsByType, nonce, publicUrl, req, title }) {
   return (
     <head>
       <meta charSet="utf-8" />
       <link rel="author" href={`${publicUrl}humans.txt`} />
       <link rel="icon" href={`${publicUrl}favicon.ico`} />
+      <link rel="apple-touch-icon" href={`${publicUrl}favicon.ico`} />
       {assetPathsByType['css'].map(path => (
         <link nonce={nonce} rel="stylesheet" key={path} href={path} />
       ))}
@@ -38,7 +40,7 @@ export default function HTMLHead({ assetPathsByType, nonce, publicUrl, req, titl
         Apollo's data (see apolloStateFn in HTMLBase). So for now, we just do a string replace, sigh.
         See related hacky code in server/app/app.js
       */}
-      <style id="jss-ssr" dangerouslySetInnerHTML={{ __html: `<!--MATERIAL-UI-CSS-SSR-REPLACE-->` }} />
+      <style id="jss-ssr" dangerouslySetInnerHTML={{ __html: `<!--CSS-SSR-REPLACE-->` }} />
     </head>
   );
 }

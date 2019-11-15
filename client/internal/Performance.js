@@ -1,7 +1,33 @@
 import Button from '@material-ui/core/Button';
+import { createUseStyles } from 'react-jss';
 import Popover from '@material-ui/core/Popover';
 import React, { useEffect, useState } from 'react';
-import styles from './Performance.module.css';
+
+const useStyles = createUseStyles({
+  performanceList: {
+    whiteSpace: 'nowrap',
+    display: 'inline-block',
+  },
+
+  performanceButton: {
+    textTransform: 'lowercase',
+  },
+
+  slowPerformanceButton: {
+    textTransform: 'lowercase',
+    color: 'red',
+  },
+
+  entryType: {
+    fontWeight: 'bold',
+    padding: '5px 20px 5px 5px',
+  },
+
+  entryData: {
+    textAlign: 'right',
+    padding: '5px',
+  },
+});
 
 // Provides insight into how long the initial render took.
 // Relies heavily on window['performance'] for now.
@@ -11,7 +37,7 @@ export default function Performance() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [duration, setDuration] = useState(0);
   const [navigationEntry, setNavigationEntry] = useState(null);
-  const [loaded, setLoaded] = useState(false);
+  const styles = useStyles();
 
   const handleClick = event => {
     setAnchorEl(event.currentTarget);
@@ -31,14 +57,10 @@ export default function Performance() {
   }
 
   useEffect(() => {
-    if (loaded) {
-      return;
-    }
     // Wait a tick until the page more or less finishes rendering.
     // XXX(mime): 100 is arbitrary. Look for better way to wait.
     setTimeout(() => calculatePerfInfo(), 100);
-    setLoaded(true);
-  }, [loaded]);
+  }, []);
 
   function renderPerfInfo() {
     if (!navigationEntry || !anchorEl) {
