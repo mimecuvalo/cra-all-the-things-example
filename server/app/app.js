@@ -1,27 +1,32 @@
-import { ApolloProvider } from '@apollo/react-common';
+import { ApolloProvider } from '@apollo/client';
 import App from '../../client/app/App';
 import createApolloClient from '../data/apollo_client';
-import { DEFAULT_LOCALE, getLocale } from './locale';
-import { getDataFromTree } from '@apollo/react-ssr';
+import { getDataFromTree } from '@apollo/client/react/ssr';
+import getExperiments from './experiments';
 import HTMLBase from './HTMLBase';
-import { initializeCurrentUser } from '../../shared/data/local_state';
-import { IntlProvider } from 'react-intl';
+import { initializeLocalState } from '../../shared/data/local_state';
+import { IntlProvider, getDefaultLocale, getLocaleFromRequest, getLocales, setLocales } from 'react-intl-wrapper';
 import { JssProvider, SheetsRegistry, createGenerateId } from 'react-jss';
-import * as languages from '../../shared/i18n/languages';
+import * as languages from '../../shared/i18n-lang-packs';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { ServerStyleSheets, ThemeProvider } from '@material-ui/core/styles';
 import { StaticRouter } from 'react-router';
 import theme from '../../shared/theme';
-import uuid from 'uuid';
 
-export default async function render({ req, res, next, assetPathsByType, appName, publicUrl, gitInfo }) {
-  initializeCurrentUser(req.session.user);
+setLocales({
+  defaultLocale: process.env.DEFAULT_LOCALE || 'en',
+  locales: process.env.LOCALES ? process.env.LOCALES.split(',') : ['en'],
+});
+
+export default async function render({ req, res, next, assetPathsByType, appName, nonce, publicUrl, gitInfo }) {
+  const experiments = getExperiments(req);
+  initializeLocalState(req.session.user, experiments);
+
   const apolloClient = createApolloClient(req);
   const context = {};
-  const nonce = createNonceAndSetCSP(res);
 
-  const locale = getLocale(req);
+  const locale = getLocaleFromRequest(req);
   const translations = languages[locale];
 
   // For Material UI setup.
@@ -34,15 +39,17 @@ export default async function render({ req, res, next, assetPathsByType, appName
   // Apollo data. a) it speeds things up, but b) if we didn't do this, on prod, it can cause
   // classname hydration mismatches.
   const completeApp = isApolloTraversal => (
-    <IntlProvider locale={locale} messages={translations}>
+    <IntlProvider defaultLocale={locale} locale={locale} messages={translations}>
       <HTMLBase
         apolloStateFn={() => apolloClient.extract()}
         appTime={gitInfo.gitTime}
         appVersion={gitInfo.gitRev}
         assetPathsByType={assetPathsByType}
         csrfToken={req.csrfToken()}
-        defaultLocale={DEFAULT_LOCALE}
+        defaultLocale={getDefaultLocale()}
+        experiments={experiments}
         locale={locale}
+        locales={getLocales()}
         nonce={nonce}
         publicUrl={publicUrl}
         req={req}
@@ -92,28 +99,4 @@ export default async function render({ req, res, next, assetPathsByType, appName
   res.write('<!doctype html>');
   res.write(renderedAppWithCSS);
   res.end();
-}
-
-function createNonceAndSetCSP(res) {
-  // nonce is used in conjunction with a CSP policy to only execute scripts that have the correct nonce attribute.
-  // see https://content-security-policy.com
-  const nonce = uuid.v4();
-
-  // If you wish to enable CSP, here's a sane policy to start with.
-  // NOTE! this *won't* work with webpack currently!!!
-  // TODO(mime): fix this. see https://webpack.js.org/guides/csp/
-  // res.set('Content-Security-Policy',
-  //     `upgrade-insecure-requests; ` +
-  //     `default-src 'none'; ` +
-  //     `script-src 'self' 'nonce-${nonce}'; ` +
-  //     `style-src 'self' https://* 'nonce-${nonce}'; ` +
-  //     `font-src 'self' https://*; ` +
-  //     `connect-src 'self'; ` +
-  //     `frame-ancestors 'self'; ` +
-  //     `frame-src 'self' http://* https://*; ` +
-  //     `media-src 'self' blob:; ` +
-  //     `img-src https: http: data:; ` +
-  //     `object-src 'self';`);
-
-  return nonce;
 }

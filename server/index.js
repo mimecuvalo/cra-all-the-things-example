@@ -3,12 +3,17 @@ import apolloServer from './data/apollo';
 import appServer from './app/app';
 import bodyParser from 'body-parser';
 import compression from 'compression';
+import connectRedis from 'connect-redis';
 import cookieParser from 'cookie-parser';
+import * as cron from './cron';
 import csurf from 'csurf';
 import express from 'express';
+import helmet from 'helmet';
 import path from 'path';
+import * as Sentry from '@sentry/node';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
+import uuid from 'uuid';
 import winston from 'winston';
 import WinstonDailyRotateFile from 'winston-daily-rotate-file';
 
@@ -24,8 +29,43 @@ export default function constructApps({ appName, productionAssetsByType, publicU
   // Add basics: gzip, body parsing, cookie parsing.
   app.use(compression());
   app.use(bodyParser.urlencoded({ extended: false }));
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({ type: ['json', 'application/csp-report'] }));
   app.use(cookieParser());
+
+  // Helmet sets security headers via HTTP headers.
+  // Learn more here: https://helmetjs.github.io/docs/
+  app.use(function(req, res, next) {
+    res.locals.nonce = uuid.v4();
+    next();
+  });
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          connectSrc: [process.env.NODE_ENV === 'development' ? '*' : "'self'"],
+          defaultSrc: ["'none'"],
+          fontSrc: ["'self'", 'https:'],
+          frameAncestors: ["'self'"],
+          frameSrc: ["'self'", 'http:', 'https:'],
+          imgSrc: ['data:', 'http:', 'https:'],
+          manifestSrc: ["'self'"],
+          mediaSrc: ["'self'", 'blob:'],
+          objectSrc: ["'self'"],
+          reportUri: '/api/report-violation',
+          scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+          upgradeInsecureRequests: [],
+
+          // XXX(mime): we have inline styles around - can we pass nonce around the app properly?
+          styleSrc: ["'self'", 'https:', "'unsafe-inline'"], //(req, res) => `'nonce-${res.locals.nonce}'`],
+        },
+        reportOnly: process.env.NODE_ENV === 'development',
+      },
+    })
+  );
+  app.post('/api/report-violation', (req, res) => {
+    console.log('CSP Violation: ', req.body || 'No data received!');
+    res.status(204).end();
+  });
 
   // Session store.
   // NOTE! We use a file storage mechanism which keeps things simple for purposes of ubiquity of this CRA package.
@@ -33,9 +73,21 @@ export default function constructApps({ appName, productionAssetsByType, publicU
   const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days.
   const sessionsSecret =
     process.env.REACT_APP_SESSION_SECRET || (process.env.NODE_ENV === 'development' ? 'dumbsecret' : null);
+
+  let store;
+  if (process.env.REACT_APP_REDIS_HOST && process.env.REACT_APP_REDIS_PORT) {
+    const RedisStore = connectRedis(session);
+    store = new RedisStore({
+      host: process.env.REACT_APP_REDIS_HOST,
+      port: process.env.REACT_APP_REDIS_PORT,
+    });
+  } else {
+    store = new FileStore({ ttl: SESSION_MAX_AGE, logFn: () => {} });
+  }
+
   app.use(
     session({
-      store: new FileStore({ ttl: SESSION_MAX_AGE, logFn: () => {} }),
+      store,
       secret: sessionsSecret,
       resave: false,
       saveUninitialized: false,
@@ -63,10 +115,29 @@ export default function constructApps({ appName, productionAssetsByType, publicU
   // Set up Apollo server.
   apolloServer && apolloServer(app);
 
-  const dispose = () => {}; // Use this function in case you need to cleanup state before an HMR refresh.
-
   // Create logger for app server to log requests.
   const appLogger = createLogger();
+
+  // Background requests
+  cron.startup();
+
+  const dispose = () => {
+    cron.shutdown();
+  }; // Use this function in case you need to cleanup state before an HMR refresh.
+
+  if (process.env.REACT_APP_SENTRY_DSN) {
+    Sentry.init({ dsn: process.env.REACT_APP_SENTRY_DSN, debug: process.env.NODE_ENV !== 'production' });
+    app.use(Sentry.Handlers.requestHandler());
+    app.use(async function(req, res, next) {
+      if (req.session.user) {
+        Sentry.configureScope(scope => {
+          scope.setUser({ id: req.session.user.model?.id, email: req.session.user.oauth.email });
+        });
+      }
+      next();
+    });
+    app.use(Sentry.Handlers.errorHandler());
+  }
 
   // Our main request handler that kicks off the SSR, using the appServer which is compiled from serverCompiler.
   // `res` has the assets (via webpack's `stats` object) from the clientCompiler.
@@ -74,7 +145,8 @@ export default function constructApps({ appName, productionAssetsByType, publicU
     logRequest(appLogger, req, req.info || req.connection);
     const assetPathsByType =
       process.env.NODE_ENV === 'development' ? processAssetsFromWebpackStats(res) : productionAssetsByType;
-    appServer({ req, res, next, assetPathsByType, appName, publicUrl, gitInfo });
+    const nonce = res.locals.nonce;
+    appServer({ req, res, next, assetPathsByType, appName, nonce, publicUrl, gitInfo });
   });
 
   return [app, dispose];

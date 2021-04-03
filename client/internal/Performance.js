@@ -1,4 +1,5 @@
 import Button from '@material-ui/core/Button';
+import classNames from 'classnames';
 import { createUseStyles } from 'react-jss';
 import Popover from '@material-ui/core/Popover';
 import React, { useEffect, useState } from 'react';
@@ -37,6 +38,8 @@ export default function Performance() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [duration, setDuration] = useState(0);
   const [navigationEntry, setNavigationEntry] = useState(null);
+  const [paintEntries, setPaintEntries] = useState(null);
+
   const styles = useStyles();
 
   const handleClick = event => {
@@ -47,27 +50,35 @@ export default function Performance() {
     setAnchorEl(null);
   };
 
-  function calculatePerfInfo() {
-    console.log('[perf]: calculating perf info...');
-    if (window['performance']) {
-      const navigationEntry = window['performance'].getEntriesByType('navigation')[0];
-      setDuration(navigationEntry.duration);
-      setNavigationEntry(navigationEntry);
-    }
-  }
-
   useEffect(() => {
-    // Wait a tick until the page more or less finishes rendering.
-    // XXX(mime): 100 is arbitrary. Look for better way to wait.
-    setTimeout(() => calculatePerfInfo(), 100);
+    if (!window['performance']) {
+      return;
+    }
+
+    const observer = new PerformanceObserver(list => {
+      const perfNavigationEntry = window['performance'].getEntriesByType('navigation')[0];
+      const perfPaintEntries = window['performance'].getEntriesByType('paint');
+      setDuration(perfNavigationEntry.duration);
+      setNavigationEntry(perfNavigationEntry);
+      setPaintEntries(perfPaintEntries);
+    });
+
+    observer.observe({
+      entryTypes: ['navigation', 'paint'],
+    });
   }, []);
 
   function renderPerfInfo() {
-    if (!navigationEntry || !anchorEl) {
+    if (!navigationEntry || !paintEntries || !anchorEl) {
       return null;
     }
 
-    const timingsInOrder = [
+    const entries = { ...navigationEntry.toJSON() };
+    paintEntries.forEach(entry => {
+      entries[entry.name] = entry.startTime;
+    });
+
+    const relevantTimingKeys = [
       'redirectStart',
       'redirectEnd',
       'fetchStart',
@@ -79,6 +90,8 @@ export default function Performance() {
       'requestStart',
       'responseStart',
       'responseEnd',
+      'first-paint',
+      'first-contentful-paint',
       'domInteractive',
       'domContentLoadedEventStart',
       'domContentLoadedEventEnd',
@@ -89,12 +102,13 @@ export default function Performance() {
 
     return (
       <table className={styles.performanceList}>
-        {timingsInOrder
-          .filter(timing => !!navigationEntry[timing])
+        {relevantTimingKeys
+          .filter(timing => !!entries[timing])
+          .sort((a, b) => entries[a] - entries[b])
           .map(timing => (
             <tr key={timing}>
               <td className={styles.entryType}>{timing}</td>
-              <td className={styles.entryData}>{navigationEntry[timing].toFixed(1)}</td>
+              <td className={styles.entryData}>{entries[timing].toFixed(1)}</td>
             </tr>
           ))}
       </table>
@@ -110,7 +124,7 @@ export default function Performance() {
         aria-haspopup="true"
         variant="outlined"
         onClick={handleClick}
-        className={duration > 5000 ? styles.slowPerformanceButton : styles.performanceButton}
+        className={classNames(duration > 5000 ? styles.slowPerformanceButton : styles.performanceButton, 'i18n-msg')}
       >
         {duration ? duration.toFixed(1) + 'ms' : '…'}
       </Button>

@@ -1,12 +1,16 @@
 import Button from '@material-ui/core/Button';
-import { defineMessages, F, useIntl } from '../../shared/i18n';
+import { defineMessages, F, useIntl } from 'react-intl-wrapper';
+import { Experiment, Variant } from '../components/Experiment';
 import gql from 'graphql-tag';
 import logo from './logo.svg';
 import React from 'react';
-import { useQuery } from '@apollo/react-hooks';
+import { useQuery } from '@apollo/client';
+import { useSpring, animated } from 'react-spring';
 
+// For things like "alt" text and other strings not in JSX.
 const messages = defineMessages({
   greeting: { msg: 'logo' },
+  fallback: { msg: 'logo2' },
 });
 
 // This is an GraphQL query for the Home component which passes the query result to the props.
@@ -23,6 +27,11 @@ const HELLO_AND_ECHO_QUERY = gql`
 
 export default function Home({ match: { url } }) {
   const intl = useIntl();
+
+  // This uses React Spring: https://www.react-spring.io/
+  // Gives you some great animation easily for your app.
+  const springProps = useSpring({ opacity: 1, top: 0, from: { opacity: 0, top: 50 } });
+
   const { loading, data } = useQuery(HELLO_AND_ECHO_QUERY, {
     variables: { str: url },
   });
@@ -35,11 +44,13 @@ export default function Home({ match: { url } }) {
     return <div>Running offline with service worker.</div>;
   }
 
-  const logoAltText = intl.formatMessage(messages.greeting);
+  const logoAltText = intl.formatMessage(messages.greeting, undefined /* values */, messages.fallback);
 
   return (
     <div>
-      <img src={logo} className="App-logo" alt={logoAltText} />
+      <animated.div style={{ position: 'relative', ...springProps }}>
+        <img src={logo} className="App-logo" alt={logoAltText} />
+      </animated.div>
       <p>
         <F
           msg="Edit {code} and save to reload."
@@ -48,6 +59,7 @@ export default function Home({ match: { url } }) {
           }}
         />
       </p>
+
       <Button href="https://reactjs.org" target="_blank" rel="noopener noreferrer" variant="contained" color="primary">
         <F msg="Learn React" />
       </Button>
@@ -65,7 +77,25 @@ export default function Home({ match: { url } }) {
           values={{
             url: data.echoExample.exampleField,
           }}
+          fallback={
+            <F
+              msg="GraphQL variables test (current url path): {url} (using i18n fallback)"
+              values={{
+                url: data.echoExample.exampleField,
+              }}
+            />
+          }
         />
+      </p>
+      <p>
+        <Experiment name="my-experiment">
+          <Variant name="on">
+            <F msg="Experiment enabled." />
+          </Variant>
+          <Variant name="off">
+            <F msg="Experiment disabled" />
+          </Variant>
+        </Experiment>
       </p>
       <p>
         <F

@@ -6,7 +6,7 @@
 </blockquote>
 
 <p align="center">
-  <a href="https://travis-ci.org/mimecuvalo/all-the-things-example"><img src="https://img.shields.io/travis/mimecuvalo/all-the-things-example.svg" alt="CI status" /></a>
+  <a href="https://travis-ci.com/mimecuvalo/all-the-things-example"><img src="https://img.shields.io/travis/mimecuvalo/all-the-things-example.svg" alt="CI status" /></a>
   <a href="https://github.com/prettier/prettier"><img src="https://img.shields.io/badge/code_style-prettier-ff69b4.svg" alt="prettier status" /></a>
   <a href="https://github.com/username/project/docs/license.md"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg" alt="license" /></a>
 </p>
@@ -61,6 +61,41 @@ To change port, in an `.env` change the values to what you desire:
 PORT=3000
 REACT_APP_SSR_PORT=3001
 ```
+
+To run migrations:
+
+```sh
+npx sequelize db:migrate && npx sequelize db:seed:all
+```
+
+To create a new migration:
+
+```sh
+npx sequelize migration:generate --name [migration_name]
+```
+
+To learn more about Sequelize and migrations, read the docs [here](https://sequelize.org/master/manual/migrations.html).
+
+To add your name/email to relevant files:
+
+```sh
+npm run config
+```
+
+To extract i18n messages (they go into the folder `build/messages`):
+
+```sh
+npm run extract-messages
+```
+
+To use [Docker](https://docs.docker.com/compose/install/):
+
+```sh
+npm run dev
+```
+
+and then MySQL will be available on port 3002 (with username/password/database name all being `allthethings`).
+Redis will be on port 3003. To set up Redis be sure to set REACT_APP_REDIS_HOST and REACT_APP_REDIS_PORT.
 
 ## 📙 Learn More
 
