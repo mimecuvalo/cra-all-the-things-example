@@ -1,4 +1,4 @@
-import { F } from '../../shared/i18n';
+import { F } from 'react-intl-wrapper';
 import HTMLHead from './HTMLHead';
 import React from 'react';
 
@@ -13,7 +13,9 @@ export default function HTMLBase({
   children,
   csrfToken,
   defaultLocale,
+  experiments,
   locale,
+  locales,
   nonce,
   publicUrl,
   req,
@@ -30,17 +32,16 @@ export default function HTMLBase({
           appVersion={appVersion}
           csrfToken={csrfToken}
           defaultLocale={defaultLocale}
+          experiments={experiments}
           locale={locale}
+          locales={locales}
           nonce={nonce}
           user={user}
         />
         <WindowErrorScript nonce={nonce} />
 
-        {/*
-          TODO(mime): This would be blocked by a CSP policy that doesn't allow inline scripts.
-          Try to get a nonce here instead.
-        */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `window.__APOLLO_STATE__ = ${JSON.stringify(apolloStateFn()).replace(/</g, '\\u003c')};`,
           }}
@@ -70,7 +71,17 @@ export default function HTMLBase({
 }
 
 // Passes key initial, bootstrap data to the client.
-function ConfigurationScript({ appTime, appVersion, csrfToken, defaultLocale, locale, nonce, user }) {
+function ConfigurationScript({
+  appTime,
+  appVersion,
+  csrfToken,
+  defaultLocale,
+  experiments,
+  locale,
+  locales,
+  nonce,
+  user,
+}) {
   return (
     <script
       nonce={nonce}
@@ -83,7 +94,9 @@ function ConfigurationScript({ appTime, appVersion, csrfToken, defaultLocale, lo
             auth0_domain: '${process.env.REACT_APP_AUTH0_DOMAIN}',
             csrf: '${csrfToken}',
             defaultLocale: '${defaultLocale}',
+            experiments: ${JSON.stringify(experiments)},
             locale: '${locale}',
+            locales: '${locales}',
             user: ${JSON.stringify(user)},
           };
         `,

@@ -1,24 +1,22 @@
-import ApolloClient from 'apollo-client';
-import { ApolloLink, split } from 'apollo-link';
-import { BatchHttpLink } from 'apollo-link-batch-http';
+import { ApolloClient, ApolloLink, HttpLink, split } from '@apollo/client';
+import { BatchHttpLink } from '@apollo/client/link/batch-http';
 import configuration from '../app/configuration';
 import { dataIdFromObject } from '../../shared/data/apollo';
-import { HttpLink } from 'apollo-link-http';
-import { initializeCurrentUser } from '../../shared/data/local_state';
+import { initializeLocalState } from '../../shared/data/local_state';
 import { InMemoryCache } from 'apollo-cache-inmemory';
-import { onError } from 'apollo-link-error';
+import { onError } from '@apollo/client/link/error';
 import { typeDefs, resolvers } from '../../shared/data/local_state';
 
 export default function createApolloClient() {
   const apolloUrl = '/graphql';
   // link to use if batching
   // also adds a `batch: true` header to the request to prove it's a different link (default)
-  const batchHttpLink = new BatchHttpLink({ apolloUrl });
+  const batchHttpLink = new BatchHttpLink({ uri: apolloUrl });
   // link to use if not batching
-  const httpLink = new HttpLink({ apolloUrl });
+  const httpLink = new HttpLink({ uri: apolloUrl });
 
   // We add the Apollo/GraphQL capabilities here (also notice ApolloProvider below).
-  const cache = new InMemoryCache({ dataIdFromObject }).restore(window['__APOLLO_STATE__']);
+  const cache = new InMemoryCache({ dataIdFromObject, freezeResults: true }).restore(window['__APOLLO_STATE__']);
 
   const errorLink = onError(({ graphQLErrors, networkError }) => {
     if (graphQLErrors) {
@@ -37,7 +35,7 @@ export default function createApolloClient() {
   );
   const link = ApolloLink.from([errorLink, splitLink]);
 
-  initializeCurrentUser(configuration.user);
+  initializeLocalState(configuration.user, configuration.experiments);
   const client = new ApolloClient({
     request: async op => {
       op.setContext({
@@ -48,6 +46,8 @@ export default function createApolloClient() {
     },
     link,
     cache,
+    // TODO(mime): assumeImmutableResults and freezeResults will be default true in Apollo 3.0
+    assumeImmutableResults: true,
     typeDefs,
     resolvers,
   });

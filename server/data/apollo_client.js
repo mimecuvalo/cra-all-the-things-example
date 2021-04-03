@@ -1,10 +1,8 @@
-import { ApolloClient } from 'apollo-client';
-import { ApolloLink } from 'apollo-link';
+import { ApolloClient, ApolloLink, HttpLink } from '@apollo/client';
 import { dataIdFromObject } from '../../shared/data/apollo';
 import fetch from 'node-fetch';
-import { HttpLink } from 'apollo-link-http';
 import { InMemoryCache } from 'apollo-cache-inmemory';
-import { onError } from 'apollo-link-error';
+import { onError } from '@apollo/client/link/error';
 import { typeDefs, resolvers } from '../../shared/data/local_state';
 
 // We create an Apollo client here on the server so that we can get server-side rendering in properly.
@@ -38,7 +36,9 @@ export default function createApolloClient(req) {
   const client = new ApolloClient({
     ssrMode: true,
     link,
-    cache: new InMemoryCache({ dataIdFromObject }),
+    cache: new InMemoryCache({ dataIdFromObject, freezeResults: true }),
+    // TODO(mime): assumeImmutableResults and freezeResults will be default true in Apollo 3.0
+    assumeImmutableResults: true,
     typeDefs,
     resolvers,
   });
