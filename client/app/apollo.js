@@ -1,11 +1,11 @@
 import { ApolloClient, ApolloLink, HttpLink, split } from '@apollo/client';
 import { BatchHttpLink } from '@apollo/client/link/batch-http';
-import configuration from '../app/configuration';
-import { dataIdFromObject } from '../../shared/data/apollo';
-import { initializeLocalState } from '../../shared/data/local_state';
+import configuration from 'client/app/configuration';
+import { dataIdFromObject } from 'shared/data/apollo';
+import { initializeLocalState } from 'shared/data/local_state';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import { onError } from '@apollo/client/link/error';
-import { typeDefs, resolvers } from '../../shared/data/local_state';
+import { typeDefs, resolvers } from 'shared/data/local_state';
 
 export default function createApolloClient() {
   const apolloUrl = '/graphql';
@@ -29,7 +29,7 @@ export default function createApolloClient() {
     }
   });
   const splitLink = split(
-    op => op.getContext().important === true,
+    (op) => op.getContext().important === true,
     httpLink, // if test is true, debatch
     batchHttpLink // otherwise, batch
   );
@@ -37,7 +37,7 @@ export default function createApolloClient() {
 
   initializeLocalState(configuration.user, configuration.experiments);
   const client = new ApolloClient({
-    request: async op => {
+    request: async (op) => {
       op.setContext({
         headers: {
           'x-xsrf-token': configuration.csrf || '',

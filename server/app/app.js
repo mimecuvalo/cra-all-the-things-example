@@ -1,18 +1,17 @@
 import { ApolloProvider } from '@apollo/client';
-import App from '../../client/app/App';
-import createApolloClient from '../data/apollo_client';
+import App from 'client/app/App';
+import createApolloClient from 'server/data/apollo_client';
 import { getDataFromTree } from '@apollo/client/react/ssr';
 import getExperiments from './experiments';
 import HTMLBase from './HTMLBase';
-import { initializeLocalState } from '../../shared/data/local_state';
+import { initializeLocalState } from 'shared/data/local_state';
 import { IntlProvider, getDefaultLocale, getLocaleFromRequest, getLocales, setLocales } from 'react-intl-wrapper';
 import { JssProvider, SheetsRegistry, createGenerateId } from 'react-jss';
-import * as languages from '../../shared/i18n-lang-packs';
-import React from 'react';
+import * as languages from 'shared/i18n-lang-packs';
 import { renderToString } from 'react-dom/server';
 import { ServerStyleSheets, ThemeProvider } from '@material-ui/core/styles';
 import { StaticRouter } from 'react-router';
-import theme from '../../shared/theme';
+import theme from 'shared/theme';
 
 setLocales({
   defaultLocale: process.env.DEFAULT_LOCALE || 'en',
@@ -38,7 +37,7 @@ export default async function render({ req, res, next, assetPathsByType, appName
   // We need to set leave out Material-UI classname generation when traversing the React tree for
   // Apollo data. a) it speeds things up, but b) if we didn't do this, on prod, it can cause
   // classname hydration mismatches.
-  const completeApp = isApolloTraversal => (
+  const completeApp = (isApolloTraversal) => (
     <IntlProvider defaultLocale={locale} locale={locale} messages={translations}>
       <HTMLBase
         apolloStateFn={() => apolloClient.extract()}

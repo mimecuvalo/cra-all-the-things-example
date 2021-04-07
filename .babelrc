@@ -1,7 +1,4 @@
 {
   "presets": ["react-app"],
-  "plugins": [
-    "@babel/plugin-proposal-optional-chaining",
-    "module:react-intl-wrapper"
-  ]
+  "plugins": ["module:react-intl-wrapper"]
 }

@@ -2,7 +2,8 @@ import _ from 'lodash';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import { REGISTERED_EXPERIMENTS } from '../../server/app/experiments';
+import rateLimit from 'express-rate-limit';
+import { REGISTERED_EXPERIMENTS } from 'server/app/experiments';
 
 const router = express.Router();
 router.post('/repl', async (req, res) => {
@@ -22,7 +23,12 @@ router.post('/repl', async (req, res) => {
   // res.json({ result, success });
 });
 
-router.get('/clientside-exceptions', async (req, res) => {
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 100,
+});
+
+router.get('/clientside-exceptions', apiLimiter, async (req, res) => {
   let exceptions = '';
   try {
     exceptions = fs.readFileSync(
@@ -36,8 +42,8 @@ router.get('/clientside-exceptions', async (req, res) => {
 
   const individualExceptions = exceptions
     .split('\n')
-    .map(e => e && JSON.parse(e))
-    .filter(e => e);
+    .map((e) => e && JSON.parse(e))
+    .filter((e) => e);
   const groupedExceptions = _.groupBy(individualExceptions, 'message');
 
   res.json({ exceptions: groupedExceptions });

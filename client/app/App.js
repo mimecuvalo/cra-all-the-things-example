@@ -1,15 +1,15 @@
-import AdminApp from '../admin';
+import AdminApp from 'client/admin';
 import './analytics';
 import './App.css';
 import classNames from 'classnames';
 import clientHealthCheck from './client_health_check';
 import CloseIcon from '@material-ui/icons/Close';
 import { defineMessages, useIntl } from 'react-intl-wrapper';
-import ErrorBoundary from '../error/ErrorBoundary';
+import ErrorBoundary from 'client/error/ErrorBoundary';
 import IconButton from '@material-ui/core/IconButton';
 import MainApp from './Main';
 import { Route, Switch } from 'react-router-dom';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SnackbarProvider, useSnackbar } from 'notistack';
 
 const messages = defineMessages({
@@ -18,9 +18,7 @@ const messages = defineMessages({
 
 // This is the main entry point on the client-side.
 export default function App() {
-  const [devOnlyHiddenOnLoad, setDevOnlyHiddenOnLoad] = useState(
-    process.env.NODE_ENV === 'development'
-  );
+  const [devOnlyHiddenOnLoad, setDevOnlyHiddenOnLoad] = useState(process.env.NODE_ENV === 'development');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -30,7 +28,7 @@ export default function App() {
 
     // Remove MaterialUI's SSR generated CSS.
     const jssStyles = document.getElementById('jss-ssr');
-    if (jssStyles && jssStyles.parentNode) {
+    if (jssStyles?.parentNode) {
       // TODO(mime) XXX(mime): remove this ASAP - disabling for now til i figure out what's going on
       //jssStyles.parentNode.removeChild(jssStyles);
     }
