@@ -1,5 +1,6 @@
+import { F, defineMessages, useIntl } from 'react-intl-wrapper';
+
 import { createLock } from 'client/app/auth';
-import { defineMessages, F, useIntl } from 'react-intl-wrapper';
 import useStyles from './errorStyles';
 
 const messages = defineMessages({
@@ -11,9 +12,9 @@ export default function Unauthorized() {
   const emojiAriaLabel = intl.formatMessage(messages.personGesturingNo);
   const styles = useStyles();
 
-  function handleLogin(evt) {
+  async function handleLogin(evt) {
     evt.preventDefault();
-    createLock().show();
+    (await createLock()).show();
   }
 
   return (

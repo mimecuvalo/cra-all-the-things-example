@@ -1,16 +1,19 @@
+import * as languages from 'shared/i18n-lang-packs';
+
+import { IntlProvider, getDefaultLocale, getLocaleFromRequest, getLocales, setLocales } from 'react-intl-wrapper';
+import { JssProvider, SheetsRegistry } from 'react-jss';
+import { ServerStyleSheets, ThemeProvider } from '@material-ui/core/styles';
+
 import { ApolloProvider } from '@apollo/client';
 import App from 'client/app/App';
+import HTMLBase from './HTMLBase';
+import { StaticRouter } from 'react-router';
 import createApolloClient from 'server/data/apollo_client';
 import { getDataFromTree } from '@apollo/client/react/ssr';
 import getExperiments from './experiments';
-import HTMLBase from './HTMLBase';
 import { initializeLocalState } from 'shared/data/local_state';
-import { IntlProvider, getDefaultLocale, getLocaleFromRequest, getLocales, setLocales } from 'react-intl-wrapper';
-import { JssProvider, SheetsRegistry, createGenerateId } from 'react-jss';
-import * as languages from 'shared/i18n-lang-packs';
+import murmurhash from 'murmurhash';
 import { renderToString } from 'react-dom/server';
-import { ServerStyleSheets, ThemeProvider } from '@material-ui/core/styles';
-import { StaticRouter } from 'react-router';
 import theme from 'shared/theme';
 
 setLocales({
@@ -19,8 +22,22 @@ setLocales({
 });
 
 export default async function render({ req, res, next, assetPathsByType, appName, nonce, publicUrl, gitInfo }) {
+  const FILTERED_KEYS = ['id'];
+  const filteredUser = req.session.user
+    ? {
+        oauth: req.session.user.oauth,
+        model:
+          req.session.user.model &&
+          Object.keys(req.session.user.model)
+            .filter((key) => !FILTERED_KEYS.includes(key))
+            .reduce((obj, key) => {
+              obj[key] = req.session.user.model[key];
+              return obj;
+            }, {}),
+      }
+    : null;
   const experiments = getExperiments(req);
-  initializeLocalState(req.session.user, experiments);
+  initializeLocalState(filteredUser, experiments);
 
   const apolloClient = createApolloClient(req);
   const context = {};
@@ -31,9 +48,16 @@ export default async function render({ req, res, next, assetPathsByType, appName
   // For Material UI setup.
   const sheets = new ServerStyleSheets();
   const sheetsNonMaterialUI = new SheetsRegistry();
-  const generateId = createGenerateId();
 
-  const coreApp = <App />;
+  // XXX(mime): if we don't manually set generateClassName we get SSR/client mismatch upon
+  // hydration. See example: https://github.com/cssinjs/jss/issues/926
+  // I don't know wtf and have messed around with this for hours and hours.
+  // This works enough for now.
+  // Material v5 is migrating away from jss -> emotion and this might be fixed in v5.
+  const createGenerateClassName = () => (rule) => `${rule.key}-${murmurhash.v3(rule.toString())}`;
+  const generateClassName = createGenerateClassName();
+
+  const coreApp = <App user={filteredUser} />;
   // We need to set leave out Material-UI classname generation when traversing the React tree for
   // Apollo data. a) it speeds things up, but b) if we didn't do this, on prod, it can cause
   // classname hydration mismatches.
@@ -53,13 +77,13 @@ export default async function render({ req, res, next, assetPathsByType, appName
         publicUrl={publicUrl}
         req={req}
         title={appName}
-        user={req.session.user}
+        user={filteredUser}
       >
         <ApolloProvider client={apolloClient}>
           <StaticRouter location={req.url} context={context}>
             {!isApolloTraversal
               ? sheets.collect(
-                  <JssProvider registry={sheetsNonMaterialUI} generateId={generateId}>
+                  <JssProvider registry={sheetsNonMaterialUI} generateId={generateClassName}>
                     <ThemeProvider theme={theme}>{coreApp}</ThemeProvider>
                   </JssProvider>
                 )

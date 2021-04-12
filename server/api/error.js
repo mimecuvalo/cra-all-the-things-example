@@ -1,7 +1,7 @@
+import WinstonDailyRotateFile from 'winston-daily-rotate-file';
 import express from 'express';
 import path from 'path';
 import winston from 'winston';
-import WinstonDailyRotateFile from 'winston-daily-rotate-file';
 
 /**
  * Exception collector that collects information both from window.error handler (for page load exceptions via GET)
@@ -18,6 +18,21 @@ const clientsideErrorsLogger = winston.createLogger({
       zippedArchive: true,
     }),
   ],
+});
+
+const serversideErrorsLogger = winston.createLogger({
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [
+    new WinstonDailyRotateFile({
+      name: 'serverside-exceptions',
+      filename: path.resolve(process.cwd(), 'logs', 'serverside-exceptions-%DATE%.log'),
+      zippedArchive: true,
+    }),
+  ],
+});
+
+process.on('unhandledRejection', (err) => {
+  serversideErrorsLogger.error(err);
 });
 
 const router = express.Router();

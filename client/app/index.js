@@ -1,21 +1,34 @@
+import './index.css';
+
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+
+import { IntlProvider, isInternalLocale, setLocales } from 'react-intl-wrapper';
+
 import { ApolloProvider } from '@apollo/client';
 import App from './App';
+import { JssProvider } from 'react-jss';
+import ReactDOM from 'react-dom';
 import { BrowserRouter as Router } from 'react-router-dom';
+import { StrictMode } from 'react';
+import { ThemeProvider } from '@material-ui/core/styles';
 import configuration from './configuration';
 import createApolloClient from './apollo';
-import './index.css';
-import { IntlProvider, isInternalLocale, setLocales } from 'react-intl-wrapper';
-import { StrictMode } from 'react';
-import ReactDOM from 'react-dom';
+import murmurhash from 'murmurhash';
 import reportWebVitals from './reportWebVitals';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import theme from 'shared/theme';
-import { ThemeProvider } from '@material-ui/core/styles';
 
 setLocales({
   defaultLocale: configuration.defaultLocale,
   locales: configuration.locales,
 });
+
+// XXX(mime): if we don't manually set generateClassName we get SSR/client mismatch upon
+// hydration. See example: https://github.com/cssinjs/jss/issues/926
+// I don't know wtf and have messed around with this for hours and hours.
+// This works enough for now.
+// Material v5 is migrating away from jss -> emotion and this might be fixed in v5.
+const createGenerateClassName = () => (rule) => `${rule.key}-${murmurhash.v3(rule.toString())}`;
+const generateClassName = createGenerateClassName();
 
 async function renderAppTree(app) {
   const client = createApolloClient();
@@ -31,7 +44,9 @@ async function renderAppTree(app) {
       <IntlProvider defaultLocale={configuration.locale} locale={configuration.locale} messages={translations}>
         <ApolloProvider client={client}>
           <Router>
-            <ThemeProvider theme={theme}>{app}</ThemeProvider>
+            <JssProvider generateId={generateClassName}>
+              <ThemeProvider theme={theme}>{app}</ThemeProvider>
+            </JssProvider>
           </Router>
         </ApolloProvider>
       </IntlProvider>
@@ -41,7 +56,8 @@ async function renderAppTree(app) {
 
 // We use `hydrate` here so that we attach to our server-side rendered React components.
 async function render() {
-  const appTree = await renderAppTree(<App />);
+  // TODO(mime): migrate window.configuration.user to LOCAL_STATE
+  const appTree = await renderAppTree(<App user={window.configuration.user} />);
   ReactDOM.hydrate(appTree, document.getElementById('root'));
 }
 render();
@@ -50,7 +66,8 @@ render();
 if (module.hot) {
   async function hotModuleRender() {
     const NextApp = require('./App').default;
-    const appTree = await renderAppTree(<NextApp />);
+    // TODO(mime): migrate window.configuration.user to LOCAL_STATE
+    const appTree = await renderAppTree(<NextApp user={window.configuration.user} />);
     ReactDOM.render(appTree, document.getElementById('root'));
   }
   module.hot.accept('./App', hotModuleRender);

@@ -1,11 +1,8 @@
-import { createUseStyles } from 'react-jss';
-//import { F } from 'react-intl-wrapper';
-import Help from './Help';
+import { Suspense, lazy, memo, useEffect, useState } from 'react';
 
-let Debug = () => null;
-if (process.env.NODE_ENV === 'development') {
-  Debug = require('client/internal/Debug').default;
-}
+import { F } from 'react-intl-wrapper';
+import Help from './Help';
+import { createUseStyles } from 'react-jss';
 
 const useStyles = createUseStyles({
   footer: {
@@ -18,36 +15,44 @@ const useStyles = createUseStyles({
   },
 });
 
-export default function Footer() {
+// NB: we memoize here because it has the a11y script included on dev which is expensive.
+const Footer = memo(function Footer() {
+  const [isLoading, setIsLoading] = useState(true);
   const styles = useStyles();
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
 
   function renderDebugMenu() {
     // Conditionally compile this code. Should not appear in production.
     if (process.env.NODE_ENV === 'development') {
       // TODO(mime): Suspense and lazy aren't supported by ReactDOMServer yet (breaks SSR).
-      // TODO(mime): Ever since React 16.10.0 the mismatch of SSR is causing a clientside error :-/
-      //    Re-enable this code later when SSR works for Suspense.
-      return <Debug />;
+      const IS_CLIENT = typeof window !== 'undefined';
+      const Fallback = (
+        <span>
+          <F msg="Loading…" />
+        </span>
+      );
 
-      // const IS_CLIENT = typeof window !== 'undefined';
-      // const Fallback = (
-      //   <span>
-      //     <F msg="Loading…" />
-      //   </span>
-      // );
-      // let SuspenseWithTemporaryWorkaround;
-      // if (IS_CLIENT) {
-      //   const Debug = lazy(() => import('client/internal/Debug'));
-      //   SuspenseWithTemporaryWorkaround = (
-      //     <Suspense fallback={Fallback}>
-      //       <Debug />
-      //     </Suspense>
-      //   );
-      // } else {
-      //   SuspenseWithTemporaryWorkaround = Fallback;
-      // }
-      //
-      // return SuspenseWithTemporaryWorkaround;
+      // To match SSR.
+      if (isLoading) {
+        return Fallback;
+      }
+
+      let SuspenseWithTemporaryWorkaround;
+      if (IS_CLIENT) {
+        const Debug = lazy(() => import('client/internal/Debug'));
+        SuspenseWithTemporaryWorkaround = (
+          <Suspense fallback={Fallback}>
+            <Debug />
+          </Suspense>
+        );
+      } else {
+        SuspenseWithTemporaryWorkaround = Fallback;
+      }
+
+      return SuspenseWithTemporaryWorkaround;
     }
 
     return null;
@@ -59,4 +64,5 @@ export default function Footer() {
       <Help />
     </footer>
   );
-}
+});
+export default Footer;
