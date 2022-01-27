@@ -14,7 +14,7 @@
     "classnames": "2.3.1",
     "connect-redis": "6.0.0",
     "cookie-parser": "1.4.6",
-    "cra-all-the-things": "0.18.0",
+    "cra-all-the-things": "0.19.0",
     "csurf": "1.11.0",
     "dataloader": "2.0.0",
     "express": "4.17.2",
